@@ -1,0 +1,86 @@
+Configurar raspi con meshtastic
+
+tutorial conectar por SSH over USB
+https://www.raspberrypi.com/news/usb-gadget-mode-in-raspberry-pi-os-ssh-over-usb/
+
+1. Instalar el SO Raspberry Pi OS Lite Trixie x64 en la SD
+2. Conectar el HAT Lora a la Raspi e introducir la SD con el SO
+3. Conectar al PC. La Raspi enciende y carga el SO. 
+4. Instalar el driver de conexion por SSH mediante el USB de la Raspi. Usar el driver https://github.com/raspberrypi/rpi-usb-gadget/releases
+5. Aparece una nueva interfaz de red en el PC Windows llamada Ethernet 3. Habilitar ICS desde la interfaz WiFi para darle conexión a la interfaz de la Raspi
+6. Conectarse por SSH con el comando ssh raspi@MeshSwitchMonitorAssist.local
+7. Instalar meshtasticd con los comandos
+	echo 'deb http://download.opensuse.org/repositories/network:/Meshtastic:/beta/Debian_13/ /' | sudo tee /etc/apt/sources.list.d/network:Meshtastic:beta.list
+	curl -fsSL https://download.opensuse.org/repositories/network:Meshtastic:beta/Debian_13/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/network_Meshtastic_beta.gpg > /dev/null
+	sudo apt update
+	sudo apt install meshtasticd
+
+
+8. Habilitar SPI en el SO para que funcione el HAT Lora
+El HAT de Waveshare se comunica mediante el bus SPI. Por defecto, en una instalación limpia de Raspberry Pi OS Lite, este bus suele venir desactivado.  
+Las instrucciones oficiales de meshtastic indican lo siguiente
+https://meshtastic.org/docs/meshtasticd/hardware/boards/raspberry-pi/#spi
+
+	sudo raspi-config nonint set_config_var dtparam=spi on /boot/firmware/config.txt # Enable SPI
+
+	# Ensure dtoverlay=spi0-0cs is set in /boot/firmware/config.txt without altering dtoverlay=vc4-kms-v3d or dtparam=uart0
+	sudo sed -i -e '/^\s*#\?\s*dtoverlay\s*=\s*vc4-kms-v3d/! s/^\s*#\?\s*(dtoverlay|dtparam\s*=\s*uart0)\s*=.*/dtoverlay=spi0-0cs/' /boot/firmware/config.txt
+
+	# Insert dtoverlay=spi0-0cs after dtparam=spi=on if not already present
+	if ! sudo grep -q '^\s*dtoverlay=spi0-0cs' /boot/firmware/config.txt; then
+		sudo sed -i '/^\s*dtparam=spi=on/a dtoverlay=spi0-0cs' /boot/firmware/config.txt
+	fi
+ 
+9. En la web oficial de Meshtastic indica un aviso si se va a usar el HAT Waveshare SX1262. Hay que configurarlo en modo CLIENT_MUTE
+
+Hardware Compatibility
+The Waveshare SX1262 LoRaWAN Hat for Raspberry Pi is not recommended for deployment. It has known hardware limitations that may affect longer messages. If you must use it, please use the CLIENT_MUTE role to avoid rebroadcasting.
+https://meshtastic.org/docs/meshtasticd/hardware/#hardware-compatibility
+
+Configurar el HAT con el rol CLIENT_MUTE
+El demonio meshtasticd lee su configuración de un archivo central que generalmente se encuentra en /etc/meshtasticd/config.yaml
+pasos en https://meshtastic.org/docs/meshtasticd/usage/#meshtasticd-configuration
+
+- Copiar plantilla de /etc/meshtasticd/available.d/lora-waveshare-sxxx.yaml a /etc/meshtasticd/config.d/
+
+To enable a LoRa radio connected to your device, first locate it's configuration in the presets, then copy to config.d.
+
+	# First, locate your radio hardware
+	ls /etc/meshtasticd/available.d
+	# Ex: lora-waveshare-sxxx.yaml  lora-MeshAdv-900M30S.yaml  lora-meshstick-1262.yaml
+
+	# Then, copy desired config to `config.d`
+	sudo cp /etc/meshtasticd/available.d/lora-waveshare-sxxx.yaml /etc/meshtasticd/config.d/
+	
+	# CUIDADO: al copiarlo con sudo, se pone usuario root y es necesario cambiarlo a usuario meshtasticd
+	sudo chown -R meshtasticd:meshtasticd /etc/meshtasticd/
+
+- Antes de nada, modificamos el fichero /etc/meshtasticd/config.yaml para habilitar el servidor web, descomentando las siguientes lineas:
+  Por defecto, al no indicarle una SSLKey ni SSLCert, va a generar uno por si mismo
+	sudo nano /etc/meshtasticd/config.yaml
+	
+		Webserver:
+		  Port: 9443 # Port for Webserver & Webservices
+		  RootPath: /usr/share/meshtasticd/web # Root Dir of WebServer
+		  Address: 0.0.0.0
+		#  SSLKey: /etc/meshtasticd/ssl/private_key.pem # Path to SSL Key, generated if not present
+		#  SSLCert: /etc/meshtasticd/ssl/certificate.pem # Path to SSL Certificate, generated if not present
+  
+  Con esto, podriamos acceder desde windows desde un navegador web a la URL https://meshswitchmonitorassist.local:9443
+
+- En vez de editar fichero config.yaml para configurar el nodo con el rol CLIENT_MUTE (no se como se hace con nano)
+Prefiero configurarlo usando la Python CLI desde Windows, mandando los comandos a la raspi.
+
+		# To edit your default configuration file, simply open it with your text editor of choice, make desired changes and save. Then restart the daemon.
+		sudo nano /etc/meshtasticd/config.yaml
+		sudo systemctl restart meshtasticd
+
+	+ Arrancamos el servicio en modo proceso, porque sino, la raspi deniega peticiones desde el exterior (no escucha en 0.0.0.0, sino en localhost)
+	sudo -u meshtasticd meshtasticd -c /etc/meshtasticd/config.yaml -p 4403
+	
+	# Desde la CLI en windows, usamos el comando para la configuración basica, donde 192.168.137.83 es la IP de la raspi obtenido con hostname -I:
+	meshtastic --host 192.168.137.83 --set device.role CLIENT_MUTE --set lora.region EU_868 --set-owner "MeshSwitchMonitorAssist" --set-owner-short "MSMA" --set device.tzdef "CET-1CEST,M3.5.0,M10.5.0/3"
+	
+	# Podemos parar el proceso y arrancar en modo servicio
+	sudo systemctl restart meshtasticd
+	

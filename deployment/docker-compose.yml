@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # 1. Motor Lógico (El Cerebro)
+  nodered:
+    image: nodered/node-red:latest
+    container_name: monitorassist_nodered
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - nodered_data:/data
+    environment:
+      - TZ=Europe/Madrid
+
+  # 2. Dashboard Visual
+  grafana:
+    image: grafana/grafana:latest
+    container_name: monitorassist_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=tfm_grafana_admin # <-- Cambia esto al subirlo
+
+volumes:
+  nodered_data:
+  grafana_data:
