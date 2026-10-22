@@ -9,20 +9,39 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
+/* Enum definitions */
+/* Flags de estado y alarmas para el campo assist_flags de MonitorAssistTelemetry 
+ utilizados como máscara de bits. */
+typedef enum _meshtastic_MonitorAssistFlags {
+    meshtastic_MonitorAssistFlags_ASSIST_FLAG_NORMAL = 0, /* Estado normal de funcionamiento */
+    meshtastic_MonitorAssistFlags_ASSIST_FLAG_FALL_DETECTED = 1, /* Caída detectada por el sensor IMU */
+    meshtastic_MonitorAssistFlags_ASSIST_FLAG_HR_CRITICAL = 2, /* Pulso crítico detectado */
+    meshtastic_MonitorAssistFlags_ASSIST_FLAG_HR_DISCONNECTED = 4, /* Banda de ritmo cardíaco desconectada / sin señal */
+    meshtastic_MonitorAssistFlags_ASSIST_FLAG_MANUAL_ALERT = 8, /* Botón de alerta manual */
+    meshtastic_MonitorAssistFlags_ASSIST_FLAG_ALERT_CLEARED = 16 /* Alerta cancelada */
+} meshtastic_MonitorAssistFlags;
+
 /* Struct definitions */
-/* Mensaje de telemetría médica privada para el TFM.
- Transmitido de forma compacta en el puerto privado 256 (PRIVATE_APP). */
+/* Mensaje de telemetría para la funcionalidad de monitorizacion y asistencia.
+ Transmitido por el puerto privado 256 (meshtastic_PortNum_PRIVATE_APP). */
 typedef struct _meshtastic_MonitorAssistTelemetry {
-    /* Timestamp de generación del mensaje en segundos (epoch unix) */
+    /* Timestamp Unix UTC de generación del mensaje en segundos. */
     uint32_t timestamp;
     /* Frecuencia cardíaca en pulsaciones por minuto (BPM) */
     uint8_t heart_rate;
-    /* Latitud multiplicada por 10^7 */
-    int32_t lat;
-    /* Longitud multiplicada por 10^7 */
-    int32_t lon;
-    /* Flags de estado del paciente: 0x00=Normal, 0x01=Pánico, 0x02=Caída IMU */
+    /* Latitud de la posicion GPS en grados, multiplicada por 10^7.
+ Positivo para latitud Norte, Negativo para latitud Sur. */
+    int32_t latitude_i;
+    /* Longitud de la posicion GPS en grados, multiplicada por 10^7.
+ Positivo para longitud Este, Negativo para longitud Oeste. */
+    int32_t longitude_i;
+    /* Altitud de la posicion GPS sobre el nivel del mar, en metros (MSL). */
+    int16_t altitude;
+    /* Máscara de bits con el estado y alertas activas.
+ Consultar enum MonitorAssistFlags */
     uint8_t assist_flags;
+    /* Porcentaje de batería restante del nodo emisor (0 - 100). */
+    uint8_t battery_level;
 } meshtastic_MonitorAssistTelemetry;
 
 
@@ -30,24 +49,35 @@ typedef struct _meshtastic_MonitorAssistTelemetry {
 extern "C" {
 #endif
 
+/* Helper constants for enums */
+#define _meshtastic_MonitorAssistFlags_MIN meshtastic_MonitorAssistFlags_ASSIST_FLAG_NORMAL
+#define _meshtastic_MonitorAssistFlags_MAX meshtastic_MonitorAssistFlags_ASSIST_FLAG_ALERT_CLEARED
+#define _meshtastic_MonitorAssistFlags_ARRAYSIZE ((meshtastic_MonitorAssistFlags)(meshtastic_MonitorAssistFlags_ASSIST_FLAG_ALERT_CLEARED+1))
+
+
+
 /* Initializer values for message structs */
-#define meshtastic_MonitorAssistTelemetry_init_default {0, 0, 0, 0, 0}
-#define meshtastic_MonitorAssistTelemetry_init_zero {0, 0, 0, 0, 0}
+#define meshtastic_MonitorAssistTelemetry_init_default {0, 0, 0, 0, 0, 0, 0}
+#define meshtastic_MonitorAssistTelemetry_init_zero {0, 0, 0, 0, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define meshtastic_MonitorAssistTelemetry_timestamp_tag 1
 #define meshtastic_MonitorAssistTelemetry_heart_rate_tag 2
-#define meshtastic_MonitorAssistTelemetry_lat_tag 3
-#define meshtastic_MonitorAssistTelemetry_lon_tag 4
-#define meshtastic_MonitorAssistTelemetry_assist_flags_tag 5
+#define meshtastic_MonitorAssistTelemetry_latitude_i_tag 3
+#define meshtastic_MonitorAssistTelemetry_longitude_i_tag 4
+#define meshtastic_MonitorAssistTelemetry_altitude_tag 5
+#define meshtastic_MonitorAssistTelemetry_assist_flags_tag 6
+#define meshtastic_MonitorAssistTelemetry_battery_level_tag 7
 
 /* Struct field encoding specification for nanopb */
 #define meshtastic_MonitorAssistTelemetry_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   timestamp,         1) \
 X(a, STATIC,   SINGULAR, UINT32,   heart_rate,        2) \
-X(a, STATIC,   SINGULAR, INT32,    lat,               3) \
-X(a, STATIC,   SINGULAR, INT32,    lon,               4) \
-X(a, STATIC,   SINGULAR, UINT32,   assist_flags,      5)
+X(a, STATIC,   SINGULAR, SFIXED32, latitude_i,        3) \
+X(a, STATIC,   SINGULAR, SFIXED32, longitude_i,       4) \
+X(a, STATIC,   SINGULAR, INT32,    altitude,          5) \
+X(a, STATIC,   SINGULAR, UINT32,   assist_flags,      6) \
+X(a, STATIC,   SINGULAR, UINT32,   battery_level,     7)
 #define meshtastic_MonitorAssistTelemetry_CALLBACK NULL
 #define meshtastic_MonitorAssistTelemetry_DEFAULT NULL
 
@@ -58,7 +88,7 @@ extern const pb_msgdesc_t meshtastic_MonitorAssistTelemetry_msg;
 
 /* Maximum encoded size of messages (where known) */
 #define MESHTASTIC_MESHTASTIC_MONITOR_ASSIST_PB_H_MAX_SIZE meshtastic_MonitorAssistTelemetry_size
-#define meshtastic_MonitorAssistTelemetry_size   34
+#define meshtastic_MonitorAssistTelemetry_size   36
 
 #ifdef __cplusplus
 } /* extern "C" */

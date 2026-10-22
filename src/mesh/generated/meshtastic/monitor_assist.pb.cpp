@@ -10,3 +10,5 @@ PB_BIND(meshtastic_MonitorAssistTelemetry, meshtastic_MonitorAssistTelemetry, AU
 
 
 
+
+

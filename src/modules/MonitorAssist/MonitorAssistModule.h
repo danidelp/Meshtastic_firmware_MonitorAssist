@@ -28,14 +28,14 @@ private:
     static constexpr uint32_t INTERVALO_ENVIO_ALERTA_SECUNDARIA_MS = MINS_TO_MILIS(2);  // Alerta secundaria cada 2 minutos 
     static constexpr uint32_t INTERVALO_ENVIO_ALERTA_SOSTENIDA_MS = MINS_TO_MILIS(10);  // Alerta sostenida cada 10 minutos 
 
-    static constexpr uint8_t FLAG_FALL_DETECTED = 0x01;
-    static constexpr uint8_t FLAG_HR_RISK = 0x02;
-    static constexpr uint8_t FLAG_HR_DISCONNECTED = 0x04;
-
-    uint32_t emergenciaStartTimer = 0; // Cronómetro de la emergencia activa
+    uint32_t emergenciaStartTimer = 0; // Temporizador dela emergencia activa
     
-    bool alertaPulso = false;
-    bool alertaCaida = false;
+    bool alertaPulsoCardiaco = false;
+    bool alertaCaidaIMU = false;
+    bool alertaManual = false;
+
+    // Funcion auxiliar para verificar si hay alertas activas
+    bool alertasActivas() const { return alertaPulsoCardiaco || alertaCaidaIMU || alertaManual; }
     
     uint32_t lastSendTime = 0;
 
@@ -59,6 +59,7 @@ private:
     CallbackObserver<MonitorAssistModule, const InputEvent *> *buttonObserver = nullptr;
     int onButtonPressed(const InputEvent *event);
     bool buttonAbortEmergency = false;
+    bool buttonStartManualEmergency = false;
 
 protected:
     // Callback nativo cuando llega un paquete a nuestro puerto privado
